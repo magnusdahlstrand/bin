@@ -1,0 +1,26 @@
+#!/usr/bin/env bash
+
+# Usage: shufflecat file.mp4 anotherfile.mp4 thirdfile.mp4
+
+# shufflecat outputs a video file compiled of all input videos, in a random order
+
+set -e
+
+which -s ffmpeg
+if [ $? -ne 0 ]; then
+  echo 'Please install ffmpeg'
+  exit 2
+fi
+
+tempfile=$(mktemp tmp.XXXXX)
+outputname=$(date +"%G%m%d_%H%M%S").mp4
+
+echo -n '' > $tempfile
+for f in $(ls $@ | sort --random-sort)
+do
+  echo "file $f" >> $tempfile
+done
+
+ffmpeg -loglevel error -f concat -i $tempfile -c copy $outputname
+
+rm -f $tempfile

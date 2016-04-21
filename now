@@ -1,0 +1,4 @@
+filename=~/Dropbox/Apps/now/$(date +"%G%m%d").md
+touch $filename
+#vim $filename
+open $filename -a /Applications/iA\ Writer.app

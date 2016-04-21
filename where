@@ -1,0 +1,11 @@
+#!/usr/bin/env bash
+
+# Usage: where
+
+# Prints a list of all "TODO"s and "HERE"s in the current directory
+
+echo "TODO:"
+grep TODO -r .
+echo ""
+echo "HERE:"
+grep HERE -r .

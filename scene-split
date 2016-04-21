@@ -1,0 +1,73 @@
+#!/usr/bin/env bash
+
+# Usage: scene-split movie.mp4 [another.mp4]
+
+# Split a long clip into parts by scene detection using ffmpeg
+
+# Change threshold if you're getting bad results.
+
+which -s ffmpeg
+if [ $? -ne 0 ]; then
+  echo 'Please install ffmpeg'
+  exit 2
+fi
+which -s ffprobe
+if [ $? -ne 0 ]; then
+  echo 'Please install ffprobe'
+  exit 2
+fi
+
+current=0
+total=$#
+
+threshold="0.25"
+
+for f in "$@"
+do
+  current=$(( $current + 1 ))
+
+  full_filename=$(basename "$f")
+  filename="${f%.*}"
+
+  echo -en "($current/$total) Processing: $full_filename\r"
+
+  # Get start-time
+  starttime=$(ffprobe -v quiet -show_format -i $f | grep "start_time" | cut -d= -f2)
+  duration=$(ffprobe -v quiet -show_format -i $f | grep "duration" | cut -d= -f2)
+
+  # Split at keyframes
+  # ffmpeg -i $f -acodec copy -f segment -vcodec copy -reset_timestamps 1 -map 0 "$filename_%d.mp4"
+
+  # Generate a cut-list
+	ffprobe -loglevel error -show_frames -of compact=p=0 -f lavfi "movie=$f,select=gt(scene\,$threshold)" | cut -d\| -f4 | sed s/pkt_pts_time=// > tmp.txt
+	echo -n '' > "$filename.txt"
+	while read line
+	do
+		echo "$line-($starttime)" | bc | sed -e s/0*$// >> "$filename.txt"
+	done <tmp.txt
+	rm tmp.txt
+	echo "$duration" | sed -e s/0*$// >> "$filename.txt"
+
+	# Cut into files
+	current_output=0
+	start_at="0.0"
+	for end_at in $(cat "$filename.txt")
+	do
+		current_output=$(( $current_output + 1 ))
+		ffmpeg -y -loglevel error -i $f -ss $start_at -to $end_at "${filename}_${current_output}.mp4"
+		start_at="$end_at"
+	done
+
+  error=$?
+  echo -n "($current/$total) "
+  if [[ $error != 0 ]]; then
+    echo "Error $error: $f                           "
+  else
+    echo "Processed: $full_filename                  "
+  fi
+
+done
+
+
+# Cut video
+# ffmpeg -i input.mp4 -ss $start -to $end output.mp4

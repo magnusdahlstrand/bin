@@ -1,0 +1,28 @@
+#!/usr/bin/env bash
+
+# Usage: youtube-dl-all list.txt
+
+# Download youtube videos based on a list formatted like so:
+# https://www.youtube.com/watch?v=dQw4w9WgXcQ bestsong
+
+# Name will have ".mp4" appended to it, and line will be skipped
+# if a file with the same name already exists.
+
+# Crash on errors
+set -e
+
+# Check dependencies
+which -s ytdl
+if [ $? -ne 0 ]; then
+  echo 'Please install ytdl (available through npm)'
+  exit 2
+fi
+
+while read v; do
+  u="$(cut -d ' ' -f1 <<< $v)"
+  n="$(cut -d ' ' -f2 <<< $v)"
+  if [[ -n "$v" && ! -f "$n.mp4" ]]; then
+    echo "Downloading $n"
+    ytdl -o $n.mp4 $u
+  fi
+done <<< "$(cat $1)"

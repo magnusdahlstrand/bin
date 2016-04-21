@@ -1,0 +1,64 @@
+#!/usr/bin/env bash
+
+# Usage: mov2gif input.mov [output.gif]
+
+# Exit on error
+# set -e
+
+# Check dependencies
+which -s ffmpeg
+if [ $? -ne 0 ]; then
+  echo 'Please install ffmpeg'
+  exit 2
+fi
+which -s convert
+if [ $? -ne 0 ]; then
+  echo 'Please install imagemagick'
+  exit 3
+fi
+
+# Usage function
+printusage() {
+  echo 'Usage: mov2gif input.mov [output.gif]'
+}
+
+# Cleanup function
+cleanup() {
+  rm -rf $tmpdir > /dev/null 2>&1
+}
+
+# Cleanup on exit
+trap cleanup EXIT
+
+# Get input file name
+if [[ -z "$1" ]]; then
+  echo 'Missing input file'
+  printusage
+  exit 1
+else
+  inputfile=$1
+fi
+
+# Check for existence of input file
+if [[ ! -a "$inputfile" ]]; then
+  echo 'Input file does not exist'
+  exit 4
+fi
+# Set output file name
+if [[ -z "$2" ]]; then
+  # Set it from input if not sent in
+  outputfile=${1%.*}.gif
+else
+  outputfile=$2
+fi
+
+# Temp directory
+tmpdir=$(mktemp -d /tmp/gif2mov.XXXXXX)
+
+# Convert input file to to pngs
+ffmpeg -loglevel quiet -i "$inputfile" -r 10 $tmpdir/out.%5d.png
+
+# Convert pngs to output file
+convert -delay 8 -loop 0 -layers OptimizeTransparency $tmpdir/out.*.png "$outputfile"
+
+echo $outputfile
