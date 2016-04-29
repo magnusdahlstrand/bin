@@ -1,0 +1,22 @@
+#!/usr/bin/env node
+
+// Usage: on-change cmd
+
+// For example:
+// on-change "osascript -e 'display notification \"A file changed $(date)\" with title \"Changed\"'"
+
+var chokidar = require('chokidar');
+var exec = require('child_process').exec;
+process.title = 'on-change';
+
+var watcher = chokidar.watch('.', {
+	ignored: /\.git/,
+	persistent: true
+}).on('change', (path) => {
+	exec(process.argv.slice(2).join(' '), function(err, out, stderr) {
+		if(err) {
+			watcher.close();
+			console.log(err, out, stderr);
+		}
+	});
+});

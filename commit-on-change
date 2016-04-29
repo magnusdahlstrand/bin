@@ -1,0 +1,15 @@
+#!/usr/bin/env bash
+
+# Usage: commit-on-change
+
+# All files in the directory will be added
+# and committed automatically.
+
+on-change git aac \"$\(date\)\" &
+echo "Committing on change."
+
+# Source this script to expose this function
+# or put it in your .bashrc
+stop-committing-on-change() {
+	killall on-change
+}
