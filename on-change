@@ -3,20 +3,37 @@
 // Usage: on-change cmd
 
 // For example:
-// on-change "osascript -e 'display notification \"A file changed $(date)\" with title \"Changed\"'"
+// on-change "osascript -e 'display notification \"A file changed $(date)\" with title \"Changed\"'" &
+// on-change date
+
+// If the process is run in the background, the output will be muted
+// The process renames itself to `on-change`, making it possible to run `killall on-change`
 
 var chokidar = require('chokidar');
 var exec = require('child_process').exec;
-process.title = 'on-change';
+var cmd = process.argv.slice(2).join(' ');
+process.title = 'on-change ' + cmd;
+
+var is_in_fg = false;
+
+exec('ps -o stat= -p ' + process.pid, function(err, out, e) {
+	if(!err) {
+		is_in_fg = out.indexOf('+') > -1;
+	}
+});
+
 
 var watcher = chokidar.watch('.', {
 	ignored: /\.git/,
 	persistent: true
 }).on('change', (path) => {
-	exec(process.argv.slice(2).join(' '), function(err, out, stderr) {
+	exec(cmd, function(err, out, stderr) {
 		if(err) {
 			watcher.close();
 			console.log(err, out, stderr);
+		}
+		else if(is_in_fg && out) {
+			process.stdout.write(out);
 		}
 	});
 });
