@@ -1,0 +1,109 @@
+#!/usr/bin/env bash
+
+function srvrfile_exists() {
+	[[ -x .srvr ]]
+}
+
+function srvr_running() {
+	kill -0 $(srvr pid) 2>/dev/null
+}
+
+function srvr() {
+	case "$1" in
+		on)
+			if srvr_running; then
+				echo 'srvr: server already running'
+				exit 5
+			fi
+			if srvrfile_exists; then
+				cmd=$(cat .srvr)
+				$cmd &
+				pid=$!
+				echo $pid > .srvr-pid
+				# MAYBE: Start a screen session that runs the server
+				# name=$(basename $PWD)
+				# screen -S $name -d -m
+				# screen -S $name -X stuff $'./.srvr & echo $! > .srvr-pid\n'
+				# echo $name > .srvr-screen
+			else
+				echo 'srvr: no executable .srvr file in cwd'
+				exit 2
+			fi
+			;;
+		start)
+			srvr on
+			;;
+		restart)
+			srvr off
+			srvr on
+			;;
+		# log)
+		# 	if [[ -r .srvr-screen ]]; then
+		# 		name=$(cat .srvr-screen)
+		# 		screen -r $name
+		# 	fi
+		# 	;;
+		off)
+			if [[ -r .srvr-pid ]]; then
+				kill $(srvr pid) 2>/dev/null
+				rm .srvr-pid
+			fi
+			# if [[ -r .srvr-screen ]]; then
+			# 	name=$(cat .srvr-screen)
+			# 	if ! [[ -z "$name" ]]; then
+			#		screen -S $name -X stuff $'./.srvr & echo $! > .srvr-pid\n'
+			# 	fi
+			# 	rm .srvr-screen
+			# fi
+			;;
+		kill)
+			srvr off
+			;;
+		stop)
+			srvr off
+			;;
+		edit)
+			if ! srvrfile_exists; then
+				echo 'srvr: no executable .srvr file in cwd'
+				exit 2
+			fi
+			if [[ -z "$EDITOR" ]]; then
+				EDITOR=edit
+			fi
+			$EDITOR .srvr
+			;;
+		init)
+			touch .srvr
+			chmod +x .srvr
+			srvr edit
+			;;
+		pid)
+			cat .srvr-pid 2>/dev/null
+			;;
+		status)
+			if srvr_running; then
+				exit
+			else
+				exit 1
+			fi
+			;;
+		ps1)
+			if srvr_running; then
+				echo -n '∣ '
+			elif srvrfile_exists; then
+				echo -n '◦ '
+			fi
+			;;
+		help)
+			echo "usage: srvr (on|off|restart|status|init|edit|pid|ps1|help)"
+			;;
+		*)
+			echo "srvr: unrecognized command"
+			srvr help
+			exit 4
+			;;
+	esac
+	
+}
+
+srvr "$@"
