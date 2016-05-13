@@ -1,109 +1,248 @@
 #!/usr/bin/env bash
 
-function srvrfile_exists() {
-	[[ -x .srvr ]]
+set -e
+
+usage="$(basename $0) [service] <command|help|debug|syntax>"
+syntax="
+# A .srvr file
+
+services:
+name path/script.js
+another another/main.js
+
+on:
+npm start
+
+off:
+npm stop
+
+whatever-you-like:
+echo \"cascading .srvr files\"
+# .srvr path/.srvr another/.srvr
+
+if [[ -n \"full bash\" ]]; then
+	\$(srvr debug) #helpful
+fi
+"
+debug_variable_command="echo -e \"Variables:\n\
+  BIN: \$BIN\n\
+  DIR: \$DIR\n\
+  SCRIPT: \$SCRIPT\n\
+  NAME: \$NAME\""
+
+srvr_file=".srvr"
+default_node_version="6.1.0"
+
+if [ "$1" == "-q" ]; then
+	be_quiet=true
+	shift
+fi
+log() {
+	if [[ ! $be_quiet ]]; then
+		echo $@
+	fi
 }
 
-function srvr_running() {
-	kill -0 $(srvr pid) 2>/dev/null
+declare -A srvr_services
+declare -A srvr_commands
+
+# Services
+is_service() {
+	if [ -z "$(get_service_script $1)" ]; then
+		return 1
+	else
+		return 0
+	fi
+}
+add_service() {
+	srvr_services[$1]="$2"
+}
+get_service_script() {
+	echo ${srvr_services[$1]}
 }
 
-function srvr() {
-	case "$1" in
-		on)
-			if srvr_running; then
-				echo 'srvr: server already running'
-				exit 5
-			fi
-			if srvrfile_exists; then
-				cmd=$(cat .srvr)
-				$cmd &
-				pid=$!
-				echo $pid > .srvr-pid
-				# MAYBE: Start a screen session that runs the server
-				# name=$(basename $PWD)
-				# screen -S $name -d -m
-				# screen -S $name -X stuff $'./.srvr & echo $! > .srvr-pid\n'
-				# echo $name > .srvr-screen
+# Commands
+is_command() {
+	if [ -z "$(get_command_body $1)" ]; then
+		return 1
+	else
+		return 0
+	fi
+}
+register_command() {
+	srvr_commands[$1]=""
+}
+# $1: command name
+build_command() {
+	srvr_commands[$1]+="$2
+" # intentional to produce a line ending. yep
+}
+list_commands() {
+	for c in ${!srvr_commands[@]}; do
+		echo -n "$c "
+	done
+	echo
+}
+get_command_body() {
+	echo "${srvr_commands[$1]}"
+}
+# $1: service
+# $2 command body
+run_command_body() {
+	script=$(get_service_script $1)
+	if [[ -n "$1" && -n "$2" ]]; then
+		BIN=$(get_node_bin "$node_version") \
+		DIR=$(dirname "$script") \
+		SCRIPT=$script \
+		NAME=$1 \
+		eval "$2"
+	fi
+}
+
+# Help provide information
+get_node_bin() {
+	if [[ -z "$1" ]]; then
+		node_version=$default_node_version
+	else
+		node_version=$1
+	fi
+	n bin $node_version
+}
+
+get_srvr_file() {
+	if [ -n "$1" -a "/" != "$1" -a "." != "$1" ]; then
+		dir=$(dirname "$1")
+		srvr_file=$dir/.srvr
+		if [ -r "$srvr_file" ]; then
+			echo "$srvr_file"
+		else
+			get_srvr_file "$dir"
+		fi
+	fi
+}
+
+prepare_env() {
+	while read -r line; do
+		if [ -z "$line" ]; then
+			continue
+		fi
+		if [ ${line: -1} == ":" ]; then
+			cmd="${line: 0:-1}"
+			# set +e
+			if [ $(declare -F "syntax_builtin__$cmd") ]; then
+				cmd="syntax_builtin__$cmd"
 			else
-				echo 'srvr: no executable .srvr file in cwd'
-				exit 2
+				register_command $cmd
+				cmd="build_command $cmd"
 			fi
-			;;
-		start)
-			srvr on
-			;;
-		restart)
-			srvr off
-			srvr on
-			;;
-		# log)
-		# 	if [[ -r .srvr-screen ]]; then
-		# 		name=$(cat .srvr-screen)
-		# 		screen -r $name
-		# 	fi
-		# 	;;
-		off)
-			if [[ -r .srvr-pid ]]; then
-				kill $(srvr pid) 2>/dev/null
-				rm .srvr-pid
-			fi
-			# if [[ -r .srvr-screen ]]; then
-			# 	name=$(cat .srvr-screen)
-			# 	if ! [[ -z "$name" ]]; then
-			#		screen -S $name -X stuff $'./.srvr & echo $! > .srvr-pid\n'
-			# 	fi
-			# 	rm .srvr-screen
-			# fi
-			;;
-		kill)
-			srvr off
-			;;
-		stop)
-			srvr off
-			;;
-		edit)
-			if ! srvrfile_exists; then
-				echo 'srvr: no executable .srvr file in cwd'
-				exit 2
-			fi
-			if [[ -z "$EDITOR" ]]; then
-				EDITOR=edit
-			fi
-			$EDITOR .srvr
-			;;
-		init)
-			touch .srvr
-			chmod +x .srvr
-			srvr edit
-			;;
-		pid)
-			cat .srvr-pid 2>/dev/null
-			;;
-		status)
-			if srvr_running; then
-				exit
-			else
-				exit 1
-			fi
-			;;
-		ps1)
-			if srvr_running; then
-				echo -n '∣ '
-			elif srvrfile_exists; then
-				echo -n '◦ '
-			fi
-			;;
-		help)
-			echo "usage: srvr (on|off|restart|status|init|edit|pid|ps1|help)"
-			;;
+			# set -e
+		else
+			$cmd "$line"
+		fi
+	done <<< "$(cat $1)"
+}
+
+# Built-in interface commands
+ui_command__debug() {
+	echo "Input:"
+	echo "  command: $2"
+	echo "  service: $1"
+	echo
+	echo "Services:"
+	for n in ${!srvr_services[@]}; do
+		echo "  $n ${srvr_services[$n]}"
+		
+	done
+	echo
+	echo "Commands:"
+	for d in ${!srvr_commands[@]}; do
+		echo "  $d:"
+		get_command_body $d
+	done
+	run_command_body $1 "$debug_variable_command"
+}
+ui_command__help() {
+	echo "usage: $usage"
+}
+ui_command__syntax() {
+	echo "syntax: $syntax"
+}
+ui_command__ps1() {
+	# This needs implementation
+	continue
+}
+
+
+# Built-in syntax commands
+syntax_builtin__services() {
+	add_service $(cut -d' ' -f1 <<< "$1") "$(cut -d' ' -f2 <<< "$1")"
+}
+
+
+# $1: service
+# $2: command
+interface() {
+	# Prepare root env
+	prepare_env $srvr_file
+	case $1 in
+		all)
+			for n in ${!srvr_services[@]}; do
+				interface $n $2
+			done
+		;;
 		*)
-			echo "srvr: unrecognized command"
-			srvr help
-			exit 4
-			;;
+			# Prepare service env
+			script=$(get_service_script $1)
+			script_dir=$(dirname "$script")
+			prepare_env "$script_dir/$srvr_file"
+			if [ $(declare -F "ui_command__$2") ]; then
+				ui_command__$2 $1 $2
+			elif ! is_service $1; then
+				log "$1 is not a service"
+				exit 1
+			elif [ ! -r "$script" ]; then
+				log "script not found: $script"
+				exit 3
+			else
+				cd $script_dir && main $1 $2
+			fi
+		;;
 	esac
-	
 }
 
-srvr "$@"
+main() {
+	if is_command $2; then
+		run_command_body $1 "$(get_command_body $2)"
+	elif is_service $2; then
+		log $usage
+		log "$2 is a service, use it with a command:"
+		log "  $(list_commands)"
+		exit 4
+	else
+		log "$1 has no command \"$2\""
+		exit 5
+	fi
+
+}
+
+
+if [ ! -r .srvr ]; then
+	log "no readable .srvr file in $CWD"
+	exit 1
+fi
+
+# Arguments
+if [[ -z "$1$2" ]]; then
+	$0 help
+	exit 1
+fi
+if [[ -z "$2" ]]; then
+	input_command="$1"
+	input_service="all"
+else
+	input_command="$2"
+	input_service="$1"
+fi
+
+# Main
+interface $input_service $input_command
