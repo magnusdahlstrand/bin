@@ -93,7 +93,7 @@ run_command_body() {
 	if [[ -n "$1" && -n "$2" ]]; then
 		BIN=$(get_node_bin "$node_version") \
 		DIR=$(dirname "$script") \
-		SCRIPT=$script \
+		SCRIPT=$(basename $script) \
 		NAME=$1 \
 		eval "$2"
 	fi
