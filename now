@@ -1,4 +1,10 @@
+#!/usr/bin/env bash
+
 filename=~/Dropbox/Apps/now/$(date +"%G%m%d").md
 touch $filename
 #vim $filename
-open $filename -a /Applications/iA\ Writer.app
+if [ -n "$1" ]; then
+	$1 $filename
+else
+	open $filename -a /Applications/iA\ Writer.app
+fi
