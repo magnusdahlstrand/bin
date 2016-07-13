@@ -1,0 +1,92 @@
+#!/usr/bin/env bash
+
+usage="$(basename $0) [editor]"
+
+set -e
+
+editor="$1"
+
+dir=~/Dropbox/Apps/now
+files=$dir/*.md
+
+_limit() {
+	if [ $1 -gt $2 ]; then
+		break;
+	fi
+}
+
+_list_files() {
+	clear
+	choice=$1
+	counter=0
+	max=$2
+	for f in $files; do
+		let counter=$counter+1
+		_limit $counter $screen_height
+		echo -ne "\n$(basename $f)"
+		if [[ $choice == $counter ]]; then
+			echo -n " <"
+		fi
+	done
+}
+_find_file() {
+	counter=0
+	for f in $files; do
+		let counter=$counter+1
+		if [[ $counter == $1 ]]; then
+			echo -n $f
+			break
+		fi
+	done
+}
+_open_file() {
+	now "$1"  "$editor"
+}
+
+_on_start() {
+	tput civis
+	clear
+	trap _on_exit EXIT
+}
+_on_exit() {
+	echo
+	tput cnorm
+}
+
+_on_start
+
+screen_height=$(tput lines)
+input=""
+choice=1
+while [[ "$input" != "q" ]]; do
+	_list_files $choice $screen_height
+	read -rsn1 input
+	case "$input" in
+		"q")
+			continue
+			;;
+		"j")
+			let choice=$choice+1
+			;;
+		"k")
+			let choice=$choice-1
+			;;
+		"p")
+			cat "$(_find_file $choice)" | less
+			;;
+		"[")
+			read -rsn1 input
+			case "$input" in
+				"A")
+					let choice=$choice-1
+					;;
+				"B")
+					let choice=$choice+1
+					;;
+			esac
+			;;
+		"")
+			_open_file "$(_find_file $choice)"
+			;;
+	esac
+done
