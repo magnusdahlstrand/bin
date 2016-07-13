@@ -1,10 +1,17 @@
 #!/usr/bin/env bash
 
-filename=~/Dropbox/Apps/now/$(date +"%G%m%d").md
-touch $filename
-#vim $filename
-if [ -n "$1" ]; then
-	$1 $filename
+usage="$(basename $0) [editor] [path.md]"
+
+if [[ ${1: -3} == ".md" ]]; then
+	filename=$1
+	editor="$2"
+else
+	filename=~/Dropbox/Apps/now/$(date +"%G%m%d").md
+	touch $filename
+	editor="$1"
+fi
+if [ -n "$editor" ]; then
+	$editor $filename
 else
 	open $filename -a /Applications/iA\ Writer.app
 fi
