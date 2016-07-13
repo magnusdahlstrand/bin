@@ -16,16 +16,23 @@ _limit() {
 }
 
 _list_files() {
-	clear
+	echo
+	tput clear
 	choice=$1
 	counter=0
 	max=$2
 	for f in $files; do
 		let counter=$counter+1
-		_limit $counter $screen_height
-		echo -ne "\n$(basename $f)"
+		_limit $counter $max
 		if [[ $choice == $counter ]]; then
-			echo -n " <"
+			tput rev
+			echo -n $f
+			tput sgr0
+		else
+			echo -n $f
+		fi
+		if [[ $counter != $screen_height ]]; then
+			echo
 		fi
 	done
 }
@@ -45,7 +52,7 @@ _open_file() {
 
 _on_start() {
 	tput civis
-	clear
+	tput clear
 	trap _on_exit EXIT
 }
 _on_exit() {
