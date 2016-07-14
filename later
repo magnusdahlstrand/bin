@@ -98,10 +98,16 @@ while [[ "$input" != "q" ]]; do
 				"B")
 					let choice=$choice+1
 					;;
+				# *)
+				# 	echo "Escape input: >$input<"
+				# 	;;
 			esac
 			;;
 		"")
 			_open_file "$(_find_file $choice)"
 			;;
+		# *)
+		# 	echo "Normal input >$input<"
+		# 	;;
 	esac
 done
