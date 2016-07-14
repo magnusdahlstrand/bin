@@ -8,6 +8,13 @@ editor="$1"
 
 dir=~/Dropbox/Apps/now
 files=$(ls -t $dir/*.md)
+nicenames=()
+for f in $files; do
+	filename=$(basename $f)
+	datename=${filename/%.*}
+	nicename=$(date -j -f "%Y%m%d" $datename +"%-d %b, %Y")
+	nicenames+="$nicename"$'\n'
+done
 
 _limit() {
 	if [ $1 -gt $2 ]; then
@@ -21,7 +28,8 @@ _list_files() {
 	choice=$1
 	counter=0
 	max=$2
-	for f in $files; do
+	IFS=$'\n'
+	for f in $nicenames; do
 		let counter=$counter+1
 		_limit $counter $max
 		if [[ $choice == $counter ]]; then
