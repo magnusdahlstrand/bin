@@ -10,6 +10,9 @@ else
 	touch $filename
 	editor="$1"
 fi
+if [[ ! -a $filename ]]; then
+	touch $filename
+fi
 if [ -n "$editor" ]; then
 	$editor $filename
 else
