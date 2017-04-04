@@ -1,2 +1,12 @@
-now ~/Writing/Att/$(date +"%G").md
+#!/usr/bin/env bash
+
+ending=md
+
+if [[ -z "$1" ]]; then
+	filename=$(date +"%G")
+else
+	filename=$1
+fi
+
+now ~/Writing/Att/$filename.$ending
 
