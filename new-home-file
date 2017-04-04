@@ -1,0 +1,14 @@
+dir=~/Dropbox/Home
+final=$dir/$@
+link=~/$@
+if [[ -z "$@" ]]; then
+	>&2 echo "usage: new-home-file [filename]"
+	exit 1
+fi
+if [[ -r "$link" ]]; then
+	mv "$link" "$final"
+else
+	touch $dir/"$@"
+fi
+ln -s "$final" "$link"
+vim "$link"
