@@ -6,8 +6,7 @@ if [[ ${1: -3} == ".md" ]]; then
 	filename=$1
 	editor="$2"
 else
-	filename=~/Dropbox/Apps/now/$(date +"%G%m%d").md
-	touch $filename
+	filename=~/Writing/Now/$(date +"%G%m%d").md
 	editor="$1"
 fi
 if [[ ! -a $filename ]]; then

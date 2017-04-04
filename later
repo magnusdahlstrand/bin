@@ -6,7 +6,7 @@ set -e
 
 editor="$1"
 
-dir=~/Dropbox/Apps/now
+dir=~/Writing/Now
 files=$(ls -t $dir/*.md)
 nicenames=()
 for f in $files; do
