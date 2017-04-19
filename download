@@ -1,0 +1,3 @@
+cd ~/Downloads
+wget "$@"
+open ~/Downloads
