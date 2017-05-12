@@ -1,0 +1,70 @@
+#!/usr/bin/env bash
+
+# Crash immediately on error
+set -e
+
+# If no input
+if [[ -z "$@" ]]; then
+	echo "usage: safe-names [-n] <files>"
+	echo
+	echo "Files are renamed to be lowercase,"
+	echo "and contain only alphanum, -, and ."
+	echo
+	exit
+fi
+
+# Keep track of amount of renamed and skipped files
+donecount=0
+skipcount=0
+
+# We have a dry round and a real round to let the user double check
+for round in 0 1; do
+	# For every input
+	for filepath in "$@"; do
+		# Skip directories
+		if [[ -d "$filepath" ]]; then
+			continue
+		fi
+		# Split directory and filename into different variables
+		# as we only want to modify the filename, not the dirpath
+		dir=$(dirname "$filepath")
+		file=$(basename "$filepath")
+		# Oneliner, backwards:
+		# Lowercase contents of variable file using bash `${file,,}`
+		# Pass in contents of variable as if it's read from a file `<<<`
+		# The regex passed to sed applies the `/g`global flag (match all)
+		# We define the character set (in square brackets) of characters
+		# we want to let through. Starting the set with `^` negates the whole
+		# match, making it match all characters not in the set we defined.
+		# Those bad characters are then `s/`ubstituted for empty strings (the)
+		# nothing hiding between the two slashes)
+		newfile="$(sed 's/[^a-z0-9\._]//g' <<< "${file,,}")"
+		# If we're in the dry round, just output the new filename
+		if [[ "$round" -eq 0 ]]; then
+			echo "$newfile"
+		else
+			# If we're in the real round, construct the updated path
+			# from the original directory and the new filename
+			newfilepath="$dir/$newfile"
+			# If the old and new filepaths are different
+			if [[ "$filepath" != "$newfilepath" ]]; then
+				# Use mv to rename the file
+				mv "$filepath" "$newfilepath"
+				# Count the file as done
+				donecount=$(expr $donecount + 1)
+			else
+				# Count the file as skipped
+				skipcount=$(expr $skipcount + 1)
+			fi
+		fi
+	done
+	# If we're in the dry round, ask whether to continue
+	if [[ "$round" -eq 0 ]]; then
+		echo
+		echo "OK? (ctrl-c to cancel)"
+		# Wait for a keypress
+		read -n1
+	else
+		echo "Renamed $donecount files ($skipcount files already safe)"
+	fi
+done
