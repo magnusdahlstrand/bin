@@ -3,7 +3,7 @@
 set -e
 
 if [[ -z "$1" ]]; then
-	echo "usage: resize-images [-q 80] [-o ./out] image-1280.jpg [image-1280@2.jpg]"
+	echo "usage: resize-images [-q 80] [-o ./outdir] [-s 1280 1280@2 ...] image.jpg [image-2.jpg]"
 	echo ""
 	echo "Resizes and optimises images, saves to jpg"
 	echo ""
@@ -21,6 +21,7 @@ fi
 # Default options
 quality=80
 outdir="./out"
+sizes="1280 1366 1440 1920"
 
 # Parse arguments
 while [[ "${1:0:1}" == "-" ]]; do
@@ -29,26 +30,38 @@ while [[ "${1:0:1}" == "-" ]]; do
 	case "$opt" in
 		o) #outdir
 			outdir=$1
+			shift
 			;;
 		q) #quality
 			quality=$1
+			shift
+			;;
+		s) #sizes
+			while [[ ! -f "$1" ]]; do
+				sizes="$sizes $1"
+				shift
+			done
 			;;
 		*)
 			echo "option \"$opt\" not recognised"
 			exit 5
 	esac
-	shift
 done
+
+if [[ -z "$sizes" ]]; then
+	echo "No sizes"
+	exit 8
+fi
+
+if [[ ${#} -lt 1 ]]; then
+	echo "No files"
+	exit 6
+fi
 
 echo "Quality: $quality"
 echo "Output dir: $outdir"
 
 mkdir -p $outdir
-
-if [[ ${#} -lt 1 ]]; then
-	echo "no files"
-	exit 6
-fi
 
 # Loop over every file
 for file in "$@"; do
@@ -63,35 +76,30 @@ for file in "$@"; do
 	base=$(basename "$file")
 	filename=${base%.*}
 	ext=${base##*.}
-	# Get the size part of the filename
-	sizedef=$(cut -d'-' -f2 <<< "$filename")
-	# Ensure we got a size definition
-	if [[ -z "$sizedef" ]]; then
-		echo "no size for file $base"
-		exit 2
-	fi
-	# Get the scale and width
-	if [[ "$sizedef" == *"@"* ]]; then
-		width=$(cut -d'@' -f1 <<< "$sizedef")
-		scale=$(cut -d'@' -f2 <<< "$sizedef")
-	else
-		width="$sizedef"
-		scale=1
-	fi
-	# Ensure we have width and scale
-	if [[ -z "$width" ]]; then
-		echo "unable to parse width"
-		exit 3
-	fi
-	if [[ -z "$scale" ]]; then
-		echo "unable to parse scale"
-		exit 4
-	fi
-	# Calculate full width
-	fullwidth=$(( $width * $scale ))
-	# echo $base $filename $ext $outdir $fullwidth
-	echo "$base -> $outdir/$filename.jpg ("$fullwidth"px)"
-	# strip metadata
-	# progressive interlace
-	convert -strip -interlace Plane -quality $quality -resize "$fullwidth"x "$file" "$outdir/$filename.jpg"
+	for sizedef in $sizes; do
+		# Get the scale and width
+		if [[ "$sizedef" == *"@"* ]]; then
+			width=$(cut -d'@' -f1 <<< "$sizedef")
+			scale=$(cut -d'@' -f2 <<< "$sizedef")
+		else
+			width="$sizedef"
+			scale=1
+		fi
+		# Ensure we have width and scale
+		if [[ -z "$width" ]]; then
+			echo "unable to parse width"
+			exit 3
+		fi
+		if [[ -z "$scale" ]]; then
+			echo "unable to parse scale"
+			exit 4
+		fi
+		# Calculate full width
+		fullwidth=$(( $width * $scale ))
+		# Construct output path
+		outpath="$outdir/$filename-$width@$scale.jpg"
+		echo "$base -> $outpath ("$fullwidth"px)"
+		# strip metadata, progressive interlace, set quality, resize
+		convert -strip -interlace Plane -quality $quality -resize "$fullwidth"x "$file" "$outpath"
+	done
 done
