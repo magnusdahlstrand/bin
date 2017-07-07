@@ -1,0 +1,113 @@
+#!/usr/bin/env bash
+
+set -e
+
+# Default options
+outdir="./out"
+auto=false
+left=0
+right=0
+top=0
+bottom=0
+
+
+# Usage if no params
+if [[ -z "$1" ]]; then
+	echo "usage: crop-images <crop instructions> [-o ./outdir] image.jpg [image-2.jpg ...]"
+	echo ""
+	echo "Crops images. Stores in original format."
+	echo ""
+	echo "-o output directory"
+	echo ""
+	echo "Crop instructions can be either"
+	echo "Auto:   -a"
+	echo "or a combination of"
+	echo "Left:   -l 0"
+	echo "Right:  -r 0"
+	echo "Top:    -t 0"
+	echo "Bottom: -b 0"
+	echo ""
+	exit 1
+fi
+
+# Parse arguments
+while [[ "${1:0:1}" == "-" ]]; do
+	opt=${1:1:1}
+	shift
+	case "$opt" in
+		o) #outdir
+			outdir=$1
+			shift
+			;;
+		a) #auto
+			auto=true
+			;;
+		l) #left
+			left=$1
+			shift
+			;;
+		r) #right
+			right=$1
+			shift
+			;;
+		t) #top
+			top=$1
+			shift
+			;;
+		b) #bottom
+			bottom=$1
+			shift
+			;;
+		*)
+			echo "option \"$opt\" not recognised"
+			exit 5
+	esac
+done
+
+
+if [[ "$#" -lt 1 ]]; then
+	echo "No files"
+	exit 6
+fi
+
+echo "Output dir: $outdir"
+if $auto; then
+	echo "Auto: $auto"
+else
+	echo "l:$left r:$right t:$top b:$bottom"
+fi
+
+mkdir -p $outdir
+
+# Loop over every file
+for file in "$@"; do
+	# Ensure the file is a file and not a directory
+	if [[ ! -f "$1" ]]; then
+		echo "input file is not a file: $file"
+		exit 7
+	fi
+	# Extract filename
+	# $file is $filepath/$base
+	# $base is $filename.$ext
+	base=$(basename "$file")
+	filename=${base%.*}
+	ext=${base##*.}
+	# Construct output path
+	outpath="$outdir/$base"
+	echo "$base -> $outpath"
+	# strip metadata, progressive interlace, set quality, resize
+	if $auto; then
+		cmd="-fuzz 8% -trim"
+	else
+		# get width & height
+		widthheight=$(cut -d' ' -f3 <<< $(identify $file))
+		width=$(cut -d'x' -f1 <<< $widthheight)
+		height=$(cut -d'x' -f2 <<< $widthheight)
+		# subtract l & r from width
+		outwidth=$(( $width - $left - $right ))
+		# subtract t & b from height
+		outheight=$(( $height - $top - $bottom ))
+		cmd="-crop "$outwidth"x"$outheight"+"$left"+"$top
+	fi
+	convert $cmd +repage -quality 100 "$file" "$outpath"
+done
