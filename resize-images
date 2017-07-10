@@ -7,7 +7,8 @@ quality=80
 outdir="./out"
 widths="1024 1280 1366 1440 1680 1920"
 scale=1
-format="jpg"
+autoformat=true
+format=""
 
 # Usage if no params
 if [[ -z "$1" ]]; then
@@ -26,6 +27,7 @@ if [[ -z "$1" ]]; then
 	echo "-o $outdir"
 	echo "-w $widths"
 	echo "-s $scale"
+	echo "-f auto"
 	echo ""
 	echo "It is recommended to have original images larger"
 	echo "than the sizes indicated in the file names."
@@ -48,6 +50,7 @@ while [[ "${1:0:1}" == "-" ]]; do
 		f) #format
 			format=$1
 			shift
+			autoformat=false
 			;;
 		s) #scale
 			scale=$1
@@ -79,7 +82,11 @@ fi
 
 echo "Quality: $quality"
 echo "Output dir: $outdir"
-echo "Format: $format"
+if $autoformat; then
+	echo "Format: auto"
+else
+	echo "Format: $format"
+fi
 echo "Widths: $widths"
 echo "Scale: $scale"
 
@@ -123,7 +130,12 @@ for file in "$@"; do
 		# Calculate final width
 		fullwidth=$(bc <<< "$scaledwidth * $density")
 		# Construct output path
-		outpath="$outdir/$filename-$width@$density.$format"
+		outpath="$outdir/$filename-$width@$density"
+		if $autoformat; then
+			outpath="$outpath.$ext"
+		else
+			outpath="$outpath.$format"
+		fi
 		echo "$base -> $outpath ("$fullwidth"px)"
 		# strip metadata, progressive interlace, set quality, resize
 		convert -strip -interlace Plane -quality $quality -resize "$fullwidth"x "$file" "$outpath"
