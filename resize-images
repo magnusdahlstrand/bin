@@ -2,26 +2,32 @@
 
 set -e
 
+# Default options
+quality=80
+outdir="./out"
+sizes="1024 1280 1366 1440 1680 1920"
+format="jpg"
+
+# Usage if no params
 if [[ -z "$1" ]]; then
-	echo "usage: resize-images [-q 80] [-o ./outdir] [-s 1280 1280@2 ...] image.jpg [image-2.jpg]"
+	echo "usage: resize-images [-q 80] [-o ./outdir] [-f jpg] [-s 1280 1280@2] image.jpg [image-2.jpg ...]"
 	echo ""
-	echo "Resizes and optimises images, saves to jpg"
+	echo "Resizes and optimises images, saves to jpg to png"
 	echo ""
-	echo "images will be resized to the width defined after"
-	echo "the dash in the file name. If @2 follows the size"
-	echo "the image will be resized to 2 times the indicated"
-	echo "width."
-	echo "All files are written to a folder called \"out\""
-	echo "which will be created in the CWD."
+	echo "-q quality"
+	echo "-o output directory"
+	echo "-s list of widths"
+	echo "-f save to format (jpg or png)"
+	echo ""
+	echo "Defaults:"
+	echo "-q $quality"
+	echo "-o $outdir"
+	echo "-s $sizes"
+	echo ""
 	echo "It is recommended to have original images larger"
 	echo "than the sizes indicated in the file names."
 	exit 1
 fi
-
-# Default options
-quality=80
-outdir="./out"
-sizes="1280 1366 1440 1920"
 
 # Parse arguments
 while [[ "${1:0:1}" == "-" ]]; do
@@ -36,9 +42,14 @@ while [[ "${1:0:1}" == "-" ]]; do
 			quality=$1
 			shift
 			;;
+		f) #format
+			format=$1
+			shift
+			;;
 		s) #sizes
-			while [[ ! -f "$1" ]]; do
-				sizes="$sizes $1"
+			sizes=""
+			while [[ ! -f "$1" ]] && [[ "$#" -gt 0 ]]; do
+				sizes="$sizes$1 "
 				shift
 			done
 			;;
@@ -48,18 +59,21 @@ while [[ "${1:0:1}" == "-" ]]; do
 	esac
 done
 
+
 if [[ -z "$sizes" ]]; then
 	echo "No sizes"
 	exit 8
 fi
 
-if [[ ${#} -lt 1 ]]; then
+if [[ "$#" -lt 1 ]]; then
 	echo "No files"
 	exit 6
 fi
 
 echo "Quality: $quality"
 echo "Output dir: $outdir"
+echo "Format: $format"
+echo "Sizes: $sizes"
 
 mkdir -p $outdir
 
@@ -97,7 +111,7 @@ for file in "$@"; do
 		# Calculate full width
 		fullwidth=$(( $width * $scale ))
 		# Construct output path
-		outpath="$outdir/$filename-$width@$scale.jpg"
+		outpath="$outdir/$filename-$width@$scale.$format"
 		echo "$base -> $outpath ("$fullwidth"px)"
 		# strip metadata, progressive interlace, set quality, resize
 		convert -strip -interlace Plane -quality $quality -resize "$fullwidth"x "$file" "$outpath"
