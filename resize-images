@@ -6,23 +6,26 @@ set -e
 quality=80
 outdir="./out"
 widths="1024 1280 1366 1440 1680 1920"
+scale=1
 format="jpg"
 
 # Usage if no params
 if [[ -z "$1" ]]; then
-	echo "usage: resize-images [-q 80] [-o ./outdir] [-f jpg] [-w 1280 1280@2] image.jpg [image-2.jpg ...]"
+	echo "usage: resize-images [-q 80] [-o ./outdir] [-f jpg] [-s 1] [-w 1280 1280@2] image.jpg [image-2.jpg ...]"
 	echo ""
 	echo "Resizes and optimises images, saves to jpg to png"
 	echo ""
 	echo "-q quality"
 	echo "-o output directory"
 	echo "-w list of widths"
+	echo "-s scale"
 	echo "-f save to format (jpg or png)"
 	echo ""
 	echo "Defaults:"
 	echo "-q $quality"
 	echo "-o $outdir"
 	echo "-w $widths"
+	echo "-s $scale"
 	echo ""
 	echo "It is recommended to have original images larger"
 	echo "than the sizes indicated in the file names."
@@ -44,6 +47,10 @@ while [[ "${1:0:1}" == "-" ]]; do
 			;;
 		f) #format
 			format=$1
+			shift
+			;;
+		s) #scale
+			scale=$1
 			shift
 			;;
 		w) #widths
@@ -74,6 +81,7 @@ echo "Quality: $quality"
 echo "Output dir: $outdir"
 echo "Format: $format"
 echo "Widths: $widths"
+echo "Scale: $scale"
 
 mkdir -p $outdir
 
@@ -108,8 +116,12 @@ for file in "$@"; do
 			echo "unable to parse density"
 			exit 4
 		fi
-		# Calculate full width
-		fullwidth=$(( $width * $density ))
+		# Calculate scaled width
+		scaledwidth=$(bc <<< "$width * $scale")
+		# Floor the resulting width
+		scaledwidth=${scaledwidth%.*}
+		# Calculate final width
+		fullwidth=$(bc <<< "$scaledwidth * $density")
 		# Construct output path
 		outpath="$outdir/$filename-$width@$density.$format"
 		echo "$base -> $outpath ("$fullwidth"px)"
