@@ -5,24 +5,24 @@ set -e
 # Default options
 quality=80
 outdir="./out"
-sizes="1024 1280 1366 1440 1680 1920"
+widths="1024 1280 1366 1440 1680 1920"
 format="jpg"
 
 # Usage if no params
 if [[ -z "$1" ]]; then
-	echo "usage: resize-images [-q 80] [-o ./outdir] [-f jpg] [-s 1280 1280@2] image.jpg [image-2.jpg ...]"
+	echo "usage: resize-images [-q 80] [-o ./outdir] [-f jpg] [-w 1280 1280@2] image.jpg [image-2.jpg ...]"
 	echo ""
 	echo "Resizes and optimises images, saves to jpg to png"
 	echo ""
 	echo "-q quality"
 	echo "-o output directory"
-	echo "-s list of widths"
+	echo "-w list of widths"
 	echo "-f save to format (jpg or png)"
 	echo ""
 	echo "Defaults:"
 	echo "-q $quality"
 	echo "-o $outdir"
-	echo "-s $sizes"
+	echo "-w $widths"
 	echo ""
 	echo "It is recommended to have original images larger"
 	echo "than the sizes indicated in the file names."
@@ -46,10 +46,10 @@ while [[ "${1:0:1}" == "-" ]]; do
 			format=$1
 			shift
 			;;
-		s) #sizes
-			sizes=""
+		w) #widths
+			widths=""
 			while [[ ! -f "$1" ]] && [[ "$#" -gt 0 ]]; do
-				sizes="$sizes$1 "
+				widths="$widths$1 "
 				shift
 			done
 			;;
@@ -60,8 +60,8 @@ while [[ "${1:0:1}" == "-" ]]; do
 done
 
 
-if [[ -z "$sizes" ]]; then
-	echo "No sizes"
+if [[ -z "$widths" ]]; then
+	echo "No widths"
 	exit 8
 fi
 
@@ -73,7 +73,7 @@ fi
 echo "Quality: $quality"
 echo "Output dir: $outdir"
 echo "Format: $format"
-echo "Sizes: $sizes"
+echo "Widths: $widths"
 
 mkdir -p $outdir
 
@@ -90,7 +90,7 @@ for file in "$@"; do
 	base=$(basename "$file")
 	filename=${base%.*}
 	ext=${base##*.}
-	for sizedef in $sizes; do
+	for sizedef in $widths; do
 		# Get the density and width
 		if [[ "$sizedef" == *"@"* ]]; then
 			width=$(cut -d'@' -f1 <<< "$sizedef")
