@@ -91,27 +91,27 @@ for file in "$@"; do
 	filename=${base%.*}
 	ext=${base##*.}
 	for sizedef in $sizes; do
-		# Get the scale and width
+		# Get the density and width
 		if [[ "$sizedef" == *"@"* ]]; then
 			width=$(cut -d'@' -f1 <<< "$sizedef")
-			scale=$(cut -d'@' -f2 <<< "$sizedef")
+			density=$(cut -d'@' -f2 <<< "$sizedef")
 		else
 			width="$sizedef"
-			scale=1
+			density=1
 		fi
-		# Ensure we have width and scale
+		# Ensure we have width and density
 		if [[ -z "$width" ]]; then
 			echo "unable to parse width"
 			exit 3
 		fi
-		if [[ -z "$scale" ]]; then
-			echo "unable to parse scale"
+		if [[ -z "$density" ]]; then
+			echo "unable to parse density"
 			exit 4
 		fi
 		# Calculate full width
-		fullwidth=$(( $width * $scale ))
+		fullwidth=$(( $width * $density ))
 		# Construct output path
-		outpath="$outdir/$filename-$width@$scale.$format"
+		outpath="$outdir/$filename-$width@$density.$format"
 		echo "$base -> $outpath ("$fullwidth"px)"
 		# strip metadata, progressive interlace, set quality, resize
 		convert -strip -interlace Plane -quality $quality -resize "$fullwidth"x "$file" "$outpath"
