@@ -5,6 +5,7 @@ set -e
 # Default options
 outdir="./out"
 auto=false
+progress=false
 left=0
 right=0
 top=0
@@ -13,10 +14,11 @@ bottom=0
 
 # Usage if no params
 if [[ -z "$1" ]]; then
-	echo "usage: crop-images <crop instructions> [-o ./outdir] image.jpg [image-2.jpg ...]"
+	echo "usage: crop-images <crop instructions> [-p] [-o ./outdir] image.jpg [image-2.jpg ...]"
 	echo ""
 	echo "Crops images. Stores in original format."
 	echo ""
+	echo "-p show progress"
 	echo "-o output directory"
 	echo ""
 	echo "Crop instructions can be either"
@@ -38,6 +40,9 @@ while [[ "${1:0:1}" == "-" ]]; do
 		o) #outdir
 			outdir=$1
 			shift
+			;;
+		p) #progress
+			outdir=true
 			;;
 		a) #auto
 			auto=true
@@ -108,6 +113,9 @@ for file in "$@"; do
 		# subtract t & b from height
 		outheight=$(( $height - $top - $bottom ))
 		cmd="-crop "$outwidth"x"$outheight"+"$left"+"$top
+	fi
+	if $progress; then
+		cmd="$cmd -monitor"
 	fi
 	convert $cmd +repage -quality 100 "$file" "$outpath"
 done
