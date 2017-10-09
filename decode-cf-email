@@ -1,0 +1,19 @@
+#!/usr/bin/env node
+
+var data = '';
+process.stdin.resume();
+process.stdin.setEncoding('utf8');
+process.stdin.on('data', chunk => data += chunk)
+process.stdin.on('end', () => {
+	process.stdout.write(decode(data, 0));
+	process.exit()
+})
+
+function decode(e, start=0) {
+	var result = '';
+	var expo = '0x' + e.substr(start, 2) | 0;
+	for (start += 2; start < e.length - 1; start += 2) {
+		result += String.fromCharCode('0x' + e.substr(start, 2) ^ expo);
+	};
+	return result
+}
