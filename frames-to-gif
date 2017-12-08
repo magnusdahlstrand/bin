@@ -1,0 +1,58 @@
+#!/usr/bin/env bash
+
+usage="frames-to-gif [skip=n] [out=filepath] frames*"
+
+if [[ -z "$1" ]]; then
+	echo "usage: $usage"
+fi
+
+# Parse arguments
+while true; do
+	if ! [[ "$1" == *"="* ]]; then
+		break
+	fi
+	var="$1"
+	val="$(sed 's/.*=//' <<< "$var")"
+	key="$(sed 's/=.*//' <<< "$var")"
+	shift
+	case $key in
+		skip )
+			skipevery=$val
+			;;
+		out )
+			outfile=$val
+			;;
+		* )
+			echo "option $key not valid"
+			echo $usage
+			exit 2
+			;;
+	esac
+done
+
+if [[ $# -lt 2 ]]; then
+	echo "requires multiple frames"
+	exit 1
+fi
+
+files="$@"
+
+if [[ -n "$skipevery" ]]; then
+	files=$(echo $files | tr " " "\n" | awk 'NR%'$skipevery'==1' | tr "\n" " ")
+fi
+
+
+# Extract filename segments
+base=$(basename $1)
+extension="${base##*.}"
+filename=$(sed 's/[-_\.][0-9]*$//' <<< "${base%.*}")
+if [[ -z "$outfile" ]]; then
+	outfile="$filename.gif"
+fi
+
+framedur=4
+if [[ -n "$skipevery" ]]; then
+	framedur=$(expr $skipevery \* $framedur)
+fi
+
+convert -delay $framedur -loop 1 $files $outfile

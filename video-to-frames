@@ -1,0 +1,50 @@
+#!/usr/bin/env bash
+
+# Defaults
+format="bmp"
+name="frames-"
+
+usage="video-to-frames [format=$format] [name=$name] video-file.mp4"
+
+if [[ -z "$1" ]]; then
+	echo "usage: $usage";
+	exit 1
+fi
+
+# Parse arguments
+while true; do
+	if ! [[ "$1" == *"="* ]]; then
+		break
+	fi
+	var="$1"
+	val="$(sed 's/.*=//' <<< "$var")"
+	key="$(sed 's/=.*//' <<< "$var")"
+	shift
+	case $key in
+		format )
+			format=$val
+			;;
+		name )
+			name=$val
+			;;
+		* )
+			echo "option $key not valid"
+			echo $usage
+			exit 2
+			;;
+	esac
+done
+
+if [[ -z "$1" ]]; then
+	echo "requires video input"
+	echo "usage: $usage"
+	exit 1
+fi
+
+path=$(dirname $name)
+
+if [[ "$path" != "." ]]; then
+	mkdir -p "$path"
+fi
+
+ffmpeg -i "$1" $name%04d.$format

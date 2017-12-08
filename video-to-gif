@@ -1,0 +1,52 @@
+#!/usr/bin/env bash
+
+usage="video-to-gif [width=n] [out=filepath] video"
+
+
+# Parse arguments
+while true; do
+	if ! [[ "$1" == *"="* ]]; then
+		break
+	fi
+	var="$1"
+	val="$(sed 's/.*=//' <<< "$var")"
+	key="$(sed 's/=.*//' <<< "$var")"
+	shift
+	case $key in
+		width )
+			width=$val
+			;;
+		out )
+			outfile=$val
+			;;
+		* )
+			echo "option $key not valid"
+			echo $usage
+			exit 2
+			;;
+	esac
+done
+
+if [[ -z "$1" ]]; then
+	echo "requires video input"
+	echo "usage: $usage"
+	exit 1
+fi
+
+input="$@"
+
+# Extract filename segments
+base=$(basename $1)
+extension="${base##*.}"
+filename=$(sed 's/[-_\.][0-9]*$//' <<< "${base%.*}")
+if [[ -z "$outfile" ]]; then
+	outfile="$filename.gif"
+fi
+
+if [[ -n "$width" ]]; then
+	scale="-vf fps=25,scale=$width:-1"
+else
+	scale=""
+fi
+
+ffmpeg -y -i $input $scale $outfile
