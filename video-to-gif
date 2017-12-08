@@ -1,7 +1,10 @@
 #!/usr/bin/env bash
 
-usage="video-to-gif [width=n] [out=filepath] video"
+width=320
+fps=25
+palette=false
 
+usage="video-to-gif [width=$width] [fps=$fps] [palette=$palette] [out=filepath] video"
 
 # Parse arguments
 while true; do
@@ -13,6 +16,9 @@ while true; do
 	key="$(sed 's/=.*//' <<< "$var")"
 	shift
 	case $key in
+		palette )
+			palette=true
+			;;
 		width )
 			width=$val
 			;;
@@ -43,10 +49,17 @@ if [[ -z "$outfile" ]]; then
 	outfile="$filename.gif"
 fi
 
-if [[ -n "$width" ]]; then
-	scale="-vf fps=25,scale=$width:-1"
-else
-	scale=""
-fi
+# Scaling & FPS
+filter="fps=$fps,scale=$width:-1"
 
-ffmpeg -y -i $input $scale $outfile
+
+if [[ $palette == true ]]; then
+	# Generate palette
+	ffmpeg -y -i $input -vf "$filter:flags=lanczos,palettegen" palette.png
+
+	# Generate gif using palette
+	ffmpeg -y -i $input -i palette.png -filter_complex "$filter:flags=lanczos[x];[x][1:v]paletteuse" $outfile
+else
+	# No palette creates smaller files
+	ffmpeg -y -i $input -vf "$filter" $outfile
+fi
