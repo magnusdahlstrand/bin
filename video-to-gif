@@ -47,7 +47,7 @@ input="$@"
 # Extract filename segments
 base=$(basename $1)
 extension="${base##*.}"
-filename=$(sed 's/[-_\.][0-9]*$//' <<< "${base%.*}")
+filename="${base%.*}"
 if [[ -z "$outfile" ]]; then
 	outfile="$filename.gif"
 fi
