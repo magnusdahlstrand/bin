@@ -55,14 +55,14 @@ fi
 # Scaling & FPS
 filter="fps=$fps,scale=$width:-1"
 
-
+# </dev/null stops ffmpeg reading from standard input
 if [[ $palette == true ]]; then
 	# Generate palette
-	ffmpeg -y -i $input -vf "$filter:flags=lanczos,palettegen" palette.png
+	< /dev/null ffmpeg -y -i $input -vf "$filter:flags=lanczos,palettegen" palette.png
 
 	# Generate gif using palette
-	ffmpeg -y -i $input -i palette.png -filter_complex "$filter:flags=lanczos[x];[x][1:v]paletteuse" $outfile
+	< /dev/null ffmpeg -y -i $input -i palette.png -filter_complex "$filter:flags=lanczos[x];[x][1:v]paletteuse" $outfile
 else
 	# No palette creates smaller files
-	ffmpeg -y -i $input -vf "$filter" $outfile
+	< /dev/null ffmpeg -y -i $input -vf "$filter" $outfile
 fi
