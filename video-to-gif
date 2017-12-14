@@ -22,6 +22,9 @@ while true; do
 		width )
 			width=$val
 			;;
+		fps )
+			fps=$val
+			;;
 		out )
 			outfile=$val
 			;;
