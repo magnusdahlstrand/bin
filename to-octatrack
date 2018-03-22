@@ -1,5 +1,12 @@
 #!/usr/bin/env bash
 
+usage="to-octatrack [mono] <files>"
+
+if [[ -z "$@" ]]; then
+	echo $usage
+	exit 1
+fi
+
 outdir=$(pwd)
 monocmd=""
 
