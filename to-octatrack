@@ -1,0 +1,19 @@
+#!/usr/bin/env bash
+
+outdir=$(pwd)
+monocmd=""
+
+case "$1" in
+	"mono" )
+		monocmd="-ac 1"
+		shift
+		;;
+esac
+
+for f in "$@"; do
+	base=$(basename "$f")
+	filename=${base%.*}
+	ext=${base##*.}
+	ffmpeg -i "$f" $monocmd -acodec pcm_s16le -ar 44100 "$outdir/$filename.wav"
+done
+
