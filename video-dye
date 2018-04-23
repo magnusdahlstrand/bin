@@ -1,0 +1,36 @@
+#!/usr/bin/env bash
+
+blendmode="glow"
+opacity=0.5
+
+usage="video-dye input color [opacity:$opacity] [blendmode:$blendmode]"
+
+if [[ -z "$1" ]]; then
+	echo $usage
+	exit 1
+fi
+input=$1
+shift
+
+if [[ -z "$1" ]]; then
+	echo $usage
+	exit 1
+fi
+color=$1
+shift
+
+if [[ -n "$1" ]]; then
+	opacity=$1
+	shift
+fi
+
+if [[ -n "$1" ]]; then
+	if [[ "$1" == "help" ]]; then
+		echo "Find a list of all blend modes at: https://ffmpeg.org/ffmpeg-filters.html#blend_002c-tblend"
+		exit 1
+	fi
+	blendmode=$1
+	shift
+fi
+
+ffmpeg -y -loglevel error -i "$input" -f lavfi -i "color=$color:s=240x160" -filter_complex "[0:v]setsar=sar=1/1[s];[s][1:v]blend=shortest=1:all_mode=$blendmode:all_opacity=$opacity[cut];[1:v][cut]overlay=shortest=1[out]" -map "[out]" "$color.mp4"
