@@ -87,6 +87,13 @@ if [[ "$#" -lt 1 ]]; then
 	exit 6
 fi
 
+number_of_widths=$(wc -w <<< "$widths")
+if [[ $number_of_widths -eq 1 && $scale -eq 1 ]]; then
+	simple_name=true
+else
+	simple_name=false
+fi
+
 echo "Quality: $quality"
 echo "Output dir: $outdir"
 if $autoformat; then
@@ -96,6 +103,11 @@ else
 fi
 echo "Widths: $widths"
 echo "Scale: $scale"
+if $simple_name; then
+	echo "Using simple name format"
+else
+	echo "Name format has width and scale"
+fi
 
 mkdir -p $outdir
 
@@ -137,7 +149,11 @@ for file in "$@"; do
 		# Calculate final width
 		fullwidth=$(bc <<< "$scaledwidth * $density")
 		# Construct output path
-		outpath="$outdir/$filename-$width@$density"
+		if $simple_name; then
+			outpath="$outdir/$filename"
+		else
+			outpath="$outdir/$filename-$width@$density"
+		fi
 		if $autoformat; then
 			outpath="$outpath.$ext"
 		else
