@@ -3,7 +3,7 @@
 set -e
 
 # Default options
-quality=80
+quality=100
 outdir="./out"
 widths="1024 1280 1366 1440 1680 1920"
 scale=1
@@ -12,7 +12,7 @@ format=""
 
 # Usage if no params
 if [[ -z "$1" ]]; then
-	echo "usage: resize-images [-q 80] [-o ./outdir] [-f jpg] [-s 1] [-w 1280 1280@2] image.jpg [image-2.jpg ...]"
+	echo "usage: resize-images [-q 100] [-o ./outdir] [-f jpg] [-s 1] [-w 1280 1280@2] image.jpg [image-2.jpg ...]"
 	echo ""
 	echo "Resizes and optimises images, saves to jpg to png"
 	echo ""
