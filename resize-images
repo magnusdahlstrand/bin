@@ -9,6 +9,7 @@ widths="1024 1280 1366 1440 1680 1920"
 scale=1
 autoformat=true
 format=""
+background=""
 
 # Usage if no params
 if [[ -z "$1" ]]; then
@@ -20,6 +21,7 @@ if [[ -z "$1" ]]; then
 	echo "-o output directory"
 	echo "-w list of widths"
 	echo "-s scale"
+	echo "-b background color"
 	echo "-f save to format (jpg or png)"
 	echo ""
 	echo "Defaults:"
@@ -27,6 +29,7 @@ if [[ -z "$1" ]]; then
 	echo "-o $outdir"
 	echo "-w $widths"
 	echo "-s $scale"
+	echo "-b transparent"
 	echo "-f auto"
 	echo ""
 	echo "It is recommended to have original images larger"
@@ -54,6 +57,10 @@ while [[ "${1:0:1}" == "-" ]]; do
 			;;
 		s) #scale
 			scale=$1
+			shift
+			;;
+		b) #background color
+			background=$1
 			shift
 			;;
 		w) #widths
@@ -136,8 +143,13 @@ for file in "$@"; do
 		else
 			outpath="$outpath.$format"
 		fi
+		if [[ -n "$background" ]]; then
+			bgcol="-background $background -alpha remove"
+		else
+			bgcol=""
+		fi
 		echo "$base -> $outpath ("$fullwidth"px)"
 		# strip metadata, progressive interlace, set quality, resize
-		convert -strip -interlace Plane -quality $quality -resize "$fullwidth"x "$file" "$outpath"
+		convert $bgcol -strip -interlace Plane -quality $quality -resize "$fullwidth"x "$file" "$outpath"
 	done
 done
