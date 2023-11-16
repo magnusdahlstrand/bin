@@ -1,0 +1,58 @@
+#!/usr/bin/env bash
+
+usage="to-webm quality=32 out=. width=initial height=initial [audio] <files>"
+
+if [[ -z $* ]]; then
+	echo "$usage"
+	exit 1
+fi
+
+outdir=$(pwd)
+audio="-an"
+quality="32"
+scale="null"
+
+# Parse arguments
+while [[ ! -e "$1" && -n "$1" ]]; do
+	IFS="="
+	read -ra keyval <<< "$1"
+	unset IFS
+	key="${keyval[0]}"
+	value="${keyval[1]}"
+	shift
+	echo "key: $key"
+	echo "value: $value"
+	case "$key" in
+		"help")
+			echo "$usage"
+			exit 1
+			;;
+		"out")
+			outdir=$value
+			;;
+		"quality")
+			quality="$value"
+			;;
+		"audio")
+			audio=""
+			;;
+		"width")
+			scale="scale=$value:-1,setsar=1:1"
+			;;
+		"height")
+			scale="scale=-1:$value,setsar=1:1"
+			;;
+		*)
+			echo "option \"$key\" not recognised"
+			exit 5
+	esac
+done
+
+mkdir -p "$outdir"
+
+for f in "$@"; do
+	base=$(basename "$f")
+	filename=${base%.*}
+	ffmpeg -i "$f" -c:v libvpx-vp9 -vf "$scale" "$audio" -crf "$quality" "$outdir/$filename.webm"
+done
+

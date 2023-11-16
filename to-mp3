@@ -1,0 +1,30 @@
+#!/usr/bin/env bash
+
+usage="to-mp3 [mono] <files>"
+
+if [[ -z $* ]]; then
+	echo "$usage"
+	exit 1
+fi
+
+outdir=$(pwd)
+channels="2"
+bitrate="192k"
+
+case "$1" in
+	"mono" )
+		channels="1"
+		shift
+		;;
+	"320" )
+		bitrate="320k"
+		shift
+		;;
+esac
+
+for f in "$@"; do
+	base=$(basename "$f")
+	filename=${base%.*}
+	ffmpeg -i "$f" -vn -ac "$channels" -b:a $bitrate -ar 44100 "$outdir/$filename.mp3"
+done
+
