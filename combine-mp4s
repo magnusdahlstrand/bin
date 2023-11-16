@@ -1,0 +1,89 @@
+#!/usr/bin/env bash
+
+# Usage: combine-mp4s list.txt [another.txt]
+
+# The list should be formatted with one path per line, prefixed by `file `, e.g.:
+# file path/to/video.mp4
+
+# Combine many videos
+
+set -e
+
+which -s ffmpeg
+if [ $? -ne 0 ]; then
+	echo 'Please install ffmpeg'
+	exit 2
+fi
+
+# Default parameters
+out="./out"
+postfix="-COMBINED"
+
+usage=$(cat << EndOfUsage
+combine-mp4s out=$out list.txt [another.txt]
+EndOfUsage
+)
+
+if [[ -z "$@" ]]; then
+	echo $usage
+	exit 1
+fi
+
+# Parse arguments
+while [[ ! -e "$1" && -n "$1" ]]; do
+	key="$(sed 's/=.*//' <<< "$1")"
+	value="$(sed 's/.*=//' <<< "$1")"
+	shift
+	case "$key" in
+		"help")
+			echo $usage
+			exit 1
+			;;
+		"out")
+			out=$value
+			;;
+		*)
+			echo "option \"$key\" not recognised"
+			exit 5
+	esac
+done
+
+if [[ -z "$@" ]]; then
+	echo "No input files"
+	exit 4
+fi
+
+current_file_index=0
+total_file_count=$#
+
+for file in "$@"
+do
+	current_file_index=$(( $current_file_index + 1 ))
+
+	basename=$(basename "$file")
+	filename="${file%.*}"
+	output_name="${out}/${filename}${postfix}.mp4"
+
+	echo "file $file"
+
+	mkdir -p "$out"
+
+	echo -en "\r\033[K($current_file_index/$total_file_count) Processing: $basename"
+
+	ffmpeg -y -loglevel error -f concat -safe 0 -i $file -c copy -an $output_name
+
+	error=$?
+	echo -n "($current_file_index/$total_file_count) "
+	if [[ $error != 0 ]]; then
+		echo -en "\r\033[KError $error: $file"
+	else
+		echo -en "\r\033[KProcessed: $basename                  "
+	fi
+
+	echo
+
+done
+
+
+# Cut video
+# ffmpeg -i input.mp4 -ss $start -to $end output.mp4
