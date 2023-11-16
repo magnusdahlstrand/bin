@@ -1,0 +1,50 @@
+#!/usr/bin/env bash
+
+set -e
+
+usage="scrape-html [out=dir] example.com"
+
+if [[ -z "$1" ]]; then
+	echo "usage: $usage"
+fi
+
+# Parse arguments
+while true; do
+	if ! [[ "$1" == *"="* ]]; then
+		break
+	fi
+	var="$1"
+	val="$(sed 's/.*=//' <<< "$var")"
+	key="$(sed 's/=.*//' <<< "$var")"
+	shift
+	case $key in
+		out )
+			out=$val
+			;;
+		user )
+			user=$val
+			;;
+		password )
+			password=$val
+			;;
+		* )
+			echo "option $key not valid"
+			echo "$usage"
+			exit 2
+			;;
+	esac
+done
+
+site="$1"
+prev_cwd=$(pwd)
+
+if [[ -n "$out" ]]; then
+	mkdir -p "$out"
+	cd "$out"
+fi
+
+wget --recursive --execute robots=off --no-clobber --html-extension --level=5 --convert-links --follow-tags=a --user="$user" --password="$password" --domains "$site" --no-parent "$site"
+
+if [[ -n "$out" ]]; then
+	cd "$prev_cwd"
+fi
