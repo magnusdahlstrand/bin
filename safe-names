@@ -38,7 +38,7 @@ for round in 0 1; do
 		# match, making it match all characters not in the set we defined.
 		# Those bad characters are then `s/`ubstituted for empty strings (the)
 		# nothing hiding between the two slashes)
-		newfile="$(sed 's/[^a-z0-9\._]//g' <<< "${file,,}")"
+		newfile="$(sed 's/[^a-z0-9\._ ]//g' <<< "${file,,}" | xargs | sed 's/[ ]/_/g')"
 		# If we're in the dry round, just output the new filename
 		if [[ "$round" -eq 0 ]]; then
 			echo "$newfile"
