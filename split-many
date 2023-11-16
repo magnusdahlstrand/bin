@@ -1,0 +1,18 @@
+#!/usr/bin/env bash
+
+for path in "$@"; do
+	path="$1"
+	shift
+	echo
+	echo $path
+	echo
+
+	paths=$(find $path -type f -name '*.mp4' ! -name '*-CUT.mp4')
+
+	OIFS="$IFS"
+	IFS=$'\n'
+	for file in $paths; do
+		split-and-crop "$file"
+	done
+	IFS="$OIFS"
+done

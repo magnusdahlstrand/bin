@@ -1,0 +1,174 @@
+#!/usr/bin/env bash
+
+# Usage: split-and-crop movie.mp4 [another.mp4]
+
+# Split a long clip into parts by scene detection using ffmpeg, crop and resize to 640x480
+
+# Change threshold if you're getting bad results.
+# set -e
+
+which -s ffmpeg
+if [ $? -ne 0 ]; then
+	echo 'Please install ffmpeg'
+	exit 2
+fi
+which -s ffprobe
+if [ $? -ne 0 ]; then
+	echo 'Please install ffprobe'
+	exit 3
+fi
+
+# Default parameters
+width=640
+height=480
+threshold="0.2"
+quality=80
+out="./out"
+postfix="-CUT"
+allow_skipping=1
+
+usage=$(cat << EndOfUsage
+split-and-crop width=$width height=$height threshold=$threshold quality=$quality out=$out file.mp4 [other_file.mp4 ...]
+EndOfUsage
+)
+
+_on_start() {
+	tput civis
+	tput clear
+	trap _on_exit EXIT
+}
+_on_exit() {
+	echo
+	tput cnorm
+}
+
+print() {
+	echo -en "\r\033[K$@"
+}
+
+_on_start
+
+if [[ -z "$@" ]]; then
+	echo $usage
+	exit 1
+fi
+
+echo "Arguments:"
+# Parse arguments
+while [[ ! -e "$1" && -n "$1" ]]; do
+	key="$(sed 's/=.*//' <<< "$1")"
+	value="$(sed 's/.*=//' <<< "$1")"
+	shift
+	echo "$key: $value"
+	case "$key" in
+		"help")
+			echo $usage
+			exit 1
+			;;
+		"width")
+			width=$value
+			;;
+		"height")
+			height=$value
+			;;
+		"quality")
+			quality=$value
+			;;
+		"threshold")
+			threshold=$value
+			;;
+		"out")
+			out=$value
+			;;
+		"noskip")
+			allow_skipping=0
+			;;
+		*)
+			echo "option \"$key\" not recognised"
+			exit 5
+	esac
+done
+echo
+
+if [[ -z "$@" ]]; then
+	echo "No input files"
+	exit 4
+fi
+
+current_file_index=0
+total_file_count=$#
+cut_media_already_exists=0
+
+for file in "$@"
+do
+	current_file_index=$(( $current_file_index + 1 ))
+
+	directory=$(dirname "$file")
+	basename=$(basename "$file")
+	filename="${basename%.*}"
+	cutlist_filename="$filename.txt"
+
+	if [[ -f "$cutlist_filename" && $allow_skipping == 1 ]]; then
+		echo -en "($current_file_index/$total_file_count) Skip: $basename"
+		continue
+	else
+		echo -en "($current_file_index/$total_file_count) Generating cutlist: $basename"
+	fi
+
+	# Get start-time
+	starttime=$(ffprobe -v quiet -show_format -i "$file" | grep "start_time" | cut -d= -f2)
+	duration=$(ffprobe -v quiet -show_format -i "$file" | grep "duration" | cut -d= -f2)
+
+	# Split at keyframes
+	# ffmpeg -i "$file" -acodec copy -f segment -vcodec copy -reset_timestamps 1 -map 0 "$filename_%d.mp4"
+
+	# Generate a cut-list
+	# ffprobe -loglevel error -show_frames -of compact=p=0 -f lavfi "movie=$file,select=gt(scene\,$threshold)" | cut -d\| -f4 | sed s/pkt_pts_time=// > tmp.txt
+	ffprobe -loglevel error -show_frames -of compact=p=0 -f lavfi "movie=$file,select=gt(scene\,$threshold)" | sed 's/\|/\n/g' | grep pkt_dts_time | sed s/pkt_dts_time=// > tmp.txt
+	echo -n '' > "$cutlist_filename"
+	while read -r line
+	do
+		echo "$line-($starttime)" | bc | sed -e s/0*$// >> "$cutlist_filename"
+	done <tmp.txt
+	rm tmp.txt
+	echo "$duration" | sed -e s/0*$// >> "$cutlist_filename"
+
+	# Cut into files
+	current_output=0
+	start_at="0.0"
+	print "($current_file_index/$total_file_count) Cutting: $basename"
+	for end_at in $(cat "$cutlist_filename")
+	do
+		current_output=$((current_output + 1))
+		print "($current_file_index/$total_file_count) Cutting: $basename, $current_output"
+		ordinal=$(printf "%03d" $current_output)
+		dir=${out%/}/${directory%/}
+		output_path="$dir/${filename}_${ordinal}${postfix}.mp4"
+		mkdir -p "$dir"
+		if [[ -f $output_path  ]]; then
+			cut_media_already_exists=1
+			continue
+		fi
+		ffmpeg -y -loglevel error -i "$file" -ss "$start_at" -to "$end_at" -an -vf "crop=ih/3*4:ih,scale=$width:$height" "$output_path"
+		start_at="$end_at"
+	done
+	error=$?
+
+	if [[ $cut_media_already_exists == 1 ]]; then
+		cut_media_already_exists=0
+		if [[ $allow_skipping == 1 ]]; then
+			continue
+		fi
+	fi
+
+	if [[ $error != 0 ]]; then
+		print "($current_file_index/$total_file_count) Error $error: $file"
+	else
+		print "($current_file_index/$total_file_count) Done: $basename"
+	fi
+
+done
+
+
+# Cut video
+# ffmpeg -i input.mp4 -ss $start -to $end output.mp4
