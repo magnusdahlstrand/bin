@@ -6,6 +6,8 @@
 
 # Change threshold if you're getting bad results.
 
+set -e
+
 which -s ffmpeg
 if [ $? -ne 0 ]; then
   echo 'Please install ffmpeg'
@@ -20,7 +22,7 @@ fi
 current=0
 total=$#
 
-threshold="0.25"
+threshold="0.2"
 
 for f in "$@"
 do
@@ -39,7 +41,8 @@ do
   # ffmpeg -i $f -acodec copy -f segment -vcodec copy -reset_timestamps 1 -map 0 "$filename_%d.mp4"
 
   # Generate a cut-list
-	ffprobe -loglevel error -show_frames -of compact=p=0 -f lavfi "movie=$f,select=gt(scene\,$threshold)" | cut -d\| -f4 | sed s/pkt_pts_time=// > tmp.txt
+	# ffprobe -loglevel error -show_frames -of compact=p=0 -f lavfi "movie=$f,select=gt(scene\,$threshold)" | cut -d\| -f4 | sed s/pkt_pts_time=// > tmp.txt
+  ffprobe -loglevel error -show_frames -of compact=p=0 -f lavfi "movie=$f,select=gt(scene\,$threshold)" | sed 's/\|/\n/g' | grep pkt_dts_time | sed s/pkt_dts_time=// > tmp.txt
 	echo -n '' > "$filename.txt"
 	while read line
 	do
@@ -54,7 +57,8 @@ do
 	for end_at in $(cat "$filename.txt")
 	do
 		current_output=$(( $current_output + 1 ))
-		ffmpeg -y -loglevel error -i $f -ss $start_at -to $end_at "${filename}_${current_output}.mp4"
+    ordinal=$(printf "%03d" $current_output)
+		ffmpeg -y -loglevel error -i $f -ss $start_at -to $end_at "${filename}_${ordinal}.mp4"
 		start_at="$end_at"
 	done
 
